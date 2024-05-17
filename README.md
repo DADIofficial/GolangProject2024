@@ -29,6 +29,16 @@ The Animal Shelter Project is a comprehensive backend solution developed by our 
 - `Number_of_phone_user` (VARCHAR(50))
 - `Role` (Default: "User")
 
+#### Employees
+
+-   `ID` (AUTO_INCREMENT PRIMARY KEY)
+-   `Name`   (TEXT)
+-   `Surname`   (VARCHAR(30))
+-   `Salary`  (VARCHAR(50))
+-   `Duty` (VARCHAR(50))
+-   `Shelter`  (VARCHAR(50))
+
+
 #### Animal
 - `ID` (AUTO_INCREMENT PRIMARY KEY)
 - `Kind_Of_Animal` (VARCHAR(255))
@@ -37,22 +47,23 @@ The Animal Shelter Project is a comprehensive backend solution developed by our 
 - `Age` (INTEGER)
 - `Description` (TEXT)
 
-#### Admins
-- `AdminID` (AUTO_INCREMENT PRIMARY KEY)
-- `Admin_Email` (TEXT)
-- `Adminame` (VARCHAR(30))
-- `Password` (Encrypted)
-- `Number_of_phone_Admin` (VARCHAR(50))
-- `Role` (VARCHAR(255) Type: Back_end, Front_end, G_admin, etc.)
-
 #### Shelter
-- `AdminID` (AUTO_INCREMENT PRIMARY KEY)
-- `CreatedAT` (VARCHAR(30))
-- `UpdatedAT` (VARCHAR(30))
-- `TITLE` (TEXT)
-- `DESCRIPTION` (VARCHAR(50))
-- `ADDRESS` (VARCHAR(30))
-- `COORDINATES` (TEXT)
+-   `ID` (SERIAL PRIMARY KEY)
+-   `Name` (VARCHAR(50))
+-   `Location` (VARCHAR(50) UNIQUE)
+-   `Description` (VARCHAR(100))
+-   `Capacity` (VARCHAR(100))
+
+
+#### Volunteers
+-   `id` SERIAL PRIMARY KEY
+-   `Name` VARCHAR(50)
+-	`Surname` VARCHAR(50)
+-	`Age` INTEGER
+-   `Description` VARCHAR(50)
+-	`Role` VARCHAR(50)
+-	`Organization` VARCHAR(50)
+-	FOREIGN KEY(Organization) REFERENCES shelters(Location)
 
 #### Food
 - `ID` (AUTO_INCREMENT PRIMARY KEY)
@@ -62,8 +73,6 @@ The Animal Shelter Project is a comprehensive backend solution developed by our 
 - `Shelter` (VARCHAR(50))
 
 
-#### Role
-- `Permissions` (TEXT)
 
 ## Conclusion
 
