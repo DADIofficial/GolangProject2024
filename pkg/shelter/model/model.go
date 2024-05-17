@@ -13,6 +13,9 @@ type Models struct {
 	Shelters    ShelterModel
 	Tokens      TokenModel
 	Permissions PermissionModel
+	Volunteers  VolunteerModel
+	Employees   EmployeeModel
+	Foods       FoodModel
 }
 
 func NewModels(db *sql.DB) Models {
@@ -30,6 +33,21 @@ func NewModels(db *sql.DB) Models {
 			ErrorLog: errorLog,
 		},
 		Shelters: ShelterModel{
+			DB:       db,
+			InfoLog:  infoLog,
+			ErrorLog: errorLog,
+		},
+		Employees: EmployeeModel{
+			DB:       db,
+			InfoLog:  infoLog,
+			ErrorLog: errorLog,
+		},
+		Volunteers: VolunteerModel{
+			DB:       db,
+			InfoLog:  infoLog,
+			ErrorLog: errorLog,
+		},
+		Foods: FoodModel{
 			DB:       db,
 			InfoLog:  infoLog,
 			ErrorLog: errorLog,

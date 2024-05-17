@@ -1,19 +1,19 @@
 package model
 
 import (
+	"context"
 	"database/sql"
-	"errors"
+	"fmt"
 	"log"
+	"time"
 )
 
 type Shelter struct {
-	Id          string `json:"id"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
-	Title       string `json:"title"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Location    string `json:"location"`
 	Description string `json:"description"`
-	Address     string `json:"address"`
-	Coordinates string `json:"coordinates"`
+	Capacity    string `json:"capacity"`
 }
 
 type ShelterModel struct {
@@ -22,44 +22,103 @@ type ShelterModel struct {
 	ErrorLog *log.Logger
 }
 
-var shelters = []Shelter{
-	{
-		Id:      "1",
-		Title:   "Paws Haven",
-		Address: "42 Bark Lane, Cityville, CA 12345",
-	},
-	{
-		Id:      "2",
-		Title:   "Whisker Sanctuary",
-		Address: "15 Meow Street, Furrytown, TX 67890",
-	},
-	{
-		Id:      "3",
-		Title:   "Feathered Friends Shelter",
-		Address: "78 Tweet Avenue, Birdsville, NY 54321",
-	},
-	{
-		Id:      "4",
-		Title:   "Scales and Tails Rescue",
-		Address: "31 Slither Road, Reptileville, FL 98765",
-	},
-	{
-		Id:      "5",
-		Title:   "Horse Haven",
-		Address: "55 Gallop Lane, Equinetown, CA 24680",
-	},
+func (s ShelterModel) Insert(shelter *Shelter) error {
+	query := `
+    INSERT INTO Shelters (Name, Location, Description, Capacity) 
+    VALUES ($1, $2, $3, $4) 
+    RETURNING ID, Name
+  `
+	args := []interface{}{shelter.Name, shelter.Location, shelter.Description, shelter.Capacity}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	return s.DB.QueryRowContext(ctx, query, args...).Scan(&shelter.ID, &shelter.Name)
 }
 
-func GetShelters() []Shelter {
-	return shelters
-}
+func (s ShelterModel) Get(id int) (*Shelter, error) {
+	query := `
+    SELECT ID, Name, Location, Description, Capacity
+    FROM Shelters
+    WHERE ID = $1
+  `
+	var shelter Shelter
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-// changed id to string check if goes wrong
-func GetShelter(id string) (*Shelter, error) {
-	for _, s := range shelters {
-		if s.Id == id {
-			return &s, nil
-		}
+	row := s.DB.QueryRowContext(ctx, query, id)
+	err := row.Scan(&shelter.ID, &shelter.Name, &shelter.Location, &shelter.Description, &shelter.Capacity)
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("Shelter not found")
+	return &shelter, nil
+}
+
+func (s ShelterModel) GetSort(location, name string, filters Filters) ([]*Shelter, Metadata, error) {
+	query := fmt.Sprintf(`
+    SELECT count(*) OVER(), ID, Name, Location, Description, Capacity
+    FROM Shelters
+    WHERE (LOWER(Location) = LOWER($1) OR $1 = '')
+    AND (LOWER(Name) = LOWER($2) OR $2 = '')
+    ORDER BY %s %s, ID ASC
+    LIMIT $3 OFFSET $4
+  `, filters.sortColumn(), filters.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []interface{}{location, name, filters.limit(), filters.offset()}
+
+	rows, err := s.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			s.ErrorLog.Println(err)
+		}
+	}()
+
+	totalRecords := 0
+	var shelters []*Shelter
+	for rows.Next() {
+		var shelter Shelter
+		err := rows.Scan(&totalRecords, &shelter.ID, &shelter.Name, &shelter.Location, &shelter.Description, &shelter.Capacity)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		shelters = append(shelters, &shelter)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return shelters, metadata, nil
+}
+
+func (s ShelterModel) Delete(id int) error {
+	query := `
+  DELETE FROM Shelters
+	WHERE ID = $1
+	`
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := s.DB.ExecContext(ctx, query, id)
+	return err
+}
+
+func (s ShelterModel) Update(shelter *Shelter) error {
+	query := `
+        UPDATE Shelters
+        SET Name = $2, Location = $3, Description = $4, Capacity = $5
+        WHERE ID = $1
+        RETURNING ID
+    `
+	args := []interface{}{shelter.ID, shelter.Name, shelter.Location, shelter.Description, shelter.Capacity}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	return s.DB.QueryRowContext(ctx, query, args...).Scan(&shelter.ID)
 }
